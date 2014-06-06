@@ -10,6 +10,7 @@ class DAEMON:
     PROCESSES = 1
     THREADS = 3
     SLEEP = 3
+    QSIZE = -1
 
 
 class MISC:
