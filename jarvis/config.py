@@ -8,7 +8,8 @@ class MISC:
     """Miscellaneous settings."""
 
     DELAY = 10      # default delay between complete processings
+    FINEDELAY = 2   # default delay between iteration
     DEBUG = True    # show debugging messages or not
     THREADS = 5     # default number of threads
     QSIZE = 0       # default task processor queue size (0 - unlimited)
-    PROCESSES = 3  # default number of processes
+    PROCESSES = 3   # default number of processes

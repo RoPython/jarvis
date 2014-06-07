@@ -1,16 +1,12 @@
 """daemon: server-like task scheduler and processor"""
 
-
 import time
+import queue
 import threading
 import multiprocessing
 
 from abc import abstractmethod
 
-try:
-    import queue
-except ImportError:
-    import Queue as queue
 
 from jarvis.config import MISC
 from jarvis.utils.decorator import abstractclass
@@ -26,7 +22,8 @@ class Daemon(object):
 
         # for multiple inheritance purposes
         super(Daemon, self).__init__(**kargs)
-        self.__data = {"delay": kargs.get("delay", MISC.DELAY)}
+        self.delay = kargs.get("delay", MISC.DELAY)
+        self.name = kargs.get("name", self.__class__.__name__)
 
     def _prologue(self):
         """Executed once before the main procedures."""
@@ -60,6 +57,7 @@ class Daemon(object):
             except KeyboardInterrupt:
                 self._interrupt()
                 break
+            time.sleep(self.delay)
         self._epilogue()
 
 
@@ -70,7 +68,10 @@ class ConcurrentDaemon(Daemon):
 
     def __init__(self, **kargs):
         """Instantiates with custom number of arguments for subclasses."""
-        super(ConcurrentDaemon, self).__init__()
+        super(ConcurrentDaemon, self).__init__(**kargs)
+        self.workers = []
+        self.manager = None
+        self.count = kargs.get("threads", MISC.THREADS)
 
     @abstractmethod
     def _put_task(self, task):
@@ -83,7 +84,7 @@ class ConcurrentDaemon(Daemon):
         pass
 
     @abstractmethod
-    def _task_done(self):
+    def _task_done(self, result=None):
         """Indicate that a formerly enqueued task is complete."""
         pass
 
@@ -91,8 +92,8 @@ class ConcurrentDaemon(Daemon):
         """Worker that gets taks from the queue and calls _process."""
         while True:
             task = self._get_task()
-            self._process(task)
-            self._task_done()
+            result = self._process(task)
+            self._task_done(result)
 
     def serve(self):
         """Starts a series of workers and listens for new requests."""
@@ -104,6 +105,7 @@ class ConcurrentDaemon(Daemon):
             except KeyboardInterrupt:
                 self._interrupt()
                 break
+            time.sleep(self.delay)
         self._epilogue()
 
 
@@ -114,33 +116,25 @@ class ThreadConcurrentDaemon(ConcurrentDaemon):
 
     def __init__(self, **kargs):
         """Instantiates with custom number of threads."""
-        super(ThreadConcurrentDaemon, self).__init__()
-        self.__data = {
-            "threads": kargs.get("threads", MISC.THREADS),
-            "name": kargs.get("name", self.__class__.__name__),
-            "qsize": kargs.get("qzise", MISC.QSIZE),
-            "workers": [],
-            "manager": None
-        }
-
-        self.queue = queue.Queue(self.__data["qsize"])
+        super(ThreadConcurrentDaemon, self).__init__(**kargs)
+        self.queue = queue.Queue(kargs.get("qzise", MISC.QSIZE))
         self.stop = threading.Event()
 
     def wakeup_workers(self):
         """Wake up all the processes required."""
         while not self.stop.is_set():
-            for thread in self.__data["workers"][:]:
+            for thread in self.workers[:]:
                 if not thread.is_alive():
-                    self.__data["workers"].remove(thread)
+                    self.workers.remove(thread)
 
-            if len(self.__data["workers"]) == self.__data["threads"]:
+            if len(self.workers) == self.count:
                 time.sleep(MISC.DELAY)
                 continue
 
             thread = threading.Thread(target=self.worker)
             thread.setDaemon(True)
             thread.start()
-            self.__data["workers"].append(thread)
+            self.workers.append(thread)
 
     def _put_task(self, task):
         """Adding the task in the queue."""
@@ -151,24 +145,28 @@ class ThreadConcurrentDaemon(ConcurrentDaemon):
         item = self.queue.get(block=True)
         return item
 
+    def _task_done(self, result=None):
+        """Indicate that a formerly enqueued task is complete."""
+        self.queue.task_done()
+
     def _prologue(self):
         """Executed once before the main procedures."""
         super(ThreadConcurrentDaemon, self)._prologue()
-        self.__data["manager"] = threading.Thread(target=self.wakeup_workers)
-        self.__data["manager"].start()
+        self.manager = threading.Thread(target=self.wakeup_workers)
+        self.manager.start()
 
     def worker(self):
         """Worker that gets taks from the queue and calls _process"""
         while not self.stop.is_set():
             task = self._get_task()
-            self._process(task)
-            self._task_done()
+            result = self._process(task)
+            self._task_done(result)
 
     def _epilogue(self):
         """Executed once after the main procedures."""
         self.stop.set()
-        self.__data["manager"].join()
-        for thread in self.__data["workers"]:
+        self.manager.join()
+        for thread in self.workers:
             if thread.is_alive():
                 thread.join()
 
@@ -182,32 +180,25 @@ class ProcessConcurrentDaemon(ConcurrentDaemon):
 
     def __init__(self, **kargs):
         """Instantiates with custom number of processes."""
-        super(ProcessConcurrentDaemon, self).__init__()
-        self.__data = {
-            "processes": kargs.get("processes", MISC.PROCESSES),
-            "name": kargs.get("name", self.__class__.__name__),
-            "qsize": kargs.get("qzise", MISC.QSIZE),
-            "workers": [],
-            "manager": None
-        }
-
-        self.queue = multiprocessing.Queue(self.__data["qsize"])
+        super(ProcessConcurrentDaemon, self).__init__(**kargs)
+        self.queue = multiprocessing.JoinableQueue(
+            kargs.get("qzise", MISC.QSIZE))
         self.stop = multiprocessing.Event()
 
     def wakeup_workers(self):
         """Wake up all the processes required."""
         while not self.stop.is_set():
-            for process in self.__data["workers"][:]:
+            for process in self.workers[:]:
                 if not process.is_alive():
-                    self.__data["workers"].remove(process)
+                    self.workers.remove(process)
 
-            if len(self.__data["workers"]) == self.__data["processes"]:
+            if len(self.workers) == self.count:
                 time.sleep(MISC.DELAY)
                 continue
 
             process = multiprocessing.Process(target=self.worker)
             process.start()
-            self.__data["workers"].append(process)
+            self.workers.append(process)
 
     def _put_task(self, task):
         """Adding the task in the queue."""
@@ -218,29 +209,33 @@ class ProcessConcurrentDaemon(ConcurrentDaemon):
         item = self.queue.get(block=True)
         return item
 
+    def _task_done(self, result=None):
+        """Indicate that a formerly enqueued task is complete."""
+        self.queue.task_done()
+
     def _prologue(self):
         """Executed once before the main procedures."""
         super(ProcessConcurrentDaemon, self)._prologue()
-        self.__data["manager"] = multiprocessing.Process(
-            target=self.wakeup_workers)
-        self.__data["manager"].start()
+        self.manager = multiprocessing.Process(target=self.wakeup_workers)
+        self.manager.start()
 
     def worker(self):
         """Worker that gets taks from the queue and calls _process"""
         while not self.stop.is_set():
             task = self._get_task()
-            self._process(task)
-            self._task_done()
+            result = self._process(task)
+            self._task_done(result)
 
     def _epilogue(self):
         """Executed once after the main procedures."""
         self.stop.set()
-        self.__data["manager"].join()
-        for process in self.__data["workers"]:
+        self.manager.join()
+        for process in self.workers:
             if process.is_alive():
                 process.join()
 
         super(ProcessConcurrentDaemon, self)._epilogue()
+
 
 if __name__ == "__main__":
     print("This module was not designed to be used in this way.")
