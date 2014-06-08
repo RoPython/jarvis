@@ -12,9 +12,6 @@ from jarvis.config import MISC, DAEMON
 from jarvis.util.misc import get_uid
 
 
-# pylint: disable=W0223
-
-
 class Daemon(object, metaclass=ABCMeta):
 
     """Abstract base class for simple daemons."""
@@ -24,10 +21,8 @@ class Daemon(object, metaclass=ABCMeta):
         """Setup a new instance."""
         # refine name
         if not name:
-            name = "{}_{}".format(
-                self.__class__.__name__,
-                get_uid()
-            )
+            name = "{}_{}".format(self.__class__.__name__, get_uid())
+
         # save attributes
         self.name = name
         self.debug = debug
@@ -54,6 +49,7 @@ class Daemon(object, metaclass=ABCMeta):
 
     def _process(self, task):
         """Wrapper over the `process`."""
+        # pylint: disable=W0703
         try:
             result = self.process(task)
         except Exception as exc:

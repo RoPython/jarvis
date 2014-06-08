@@ -20,7 +20,7 @@ setup(
     author_email=("Cosmin Poieana <cmin@ropython.org>, "
                   "Alexandru Coman <alex@ropython.org>"),
     url="https://github.com/RoPython/jarvis",
-    packages=["jarvis", "jarvis.util", "jarvis.work"],
+    packages=["jarvis", "jarvis.util", "jarvis.worker"],
     scripts=["scripts/jarvis"],
     requires=["redis"]
 )

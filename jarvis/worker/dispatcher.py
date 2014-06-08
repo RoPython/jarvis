@@ -89,7 +89,7 @@ class Dispatcher(ThreadDaemon):
         try:
             response = func(task)
         except Exception as exc:
-            raise ValueError(str(exc))    # FIXME: why raising ValueError?
+            raise Exception(str(exc))
 
         return response
 
@@ -97,8 +97,11 @@ class Dispatcher(ThreadDaemon):
         """Sends the response back."""
         try:
             task[1].send(result)
-        except (ValueError, EOFError) as exc:
+        except EOFError as exc:
             self.logger.error(exc)
+        except Exception as exc:
+            self.logger.error(exc)
+
         super(Dispatcher, self).task_done(task, result)
 
     def task_fail(self, task, exc):

@@ -34,3 +34,27 @@ class DISPATCHER:
     LOOP = True
     # connectivity
     ADDRESS = ("127.0.0.1", 6969)
+
+
+class SCHEDULER:
+
+    """Scheduler default values."""
+
+    # Concurrent matter
+    WORKERS = 1              # Default number of workers
+    DELAY = 10               # Default time between iteration
+    FINEDELAY = DELAY * 0.1  # Default time between events
+
+    # Other settings
+    LOOP = True
+
+
+class TASK:
+
+    """Default values for tasks"""
+
+    # Status for Tasks
+    UNSCHEDULED = "unscheduled",
+    SCHEDULED = "scheduled",
+    RUNNING = "running",
+    DONE = "done"
