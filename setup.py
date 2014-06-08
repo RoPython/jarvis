@@ -22,7 +22,7 @@ setup(
         "alex@ropython.org"
     ),
     url="https://github.com/RoPython/jarvis",
-    packages=["jarvis", "jarvis.utils", "jarvis.worker"],
+    packages=["jarvis", "jarvis.util", "jarvis.work"],
     scripts=["scripts/jarvis"],
     requires=["redis"]
 )

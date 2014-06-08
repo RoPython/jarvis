@@ -1,0 +1,7 @@
+- unit tests
+- improve logic & support
+- custom and relevant dispatchers
+
+- useful decorators
+- enhanced and fully customizable logger through designed module
+- sms & mail support in lib notify
