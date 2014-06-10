@@ -58,3 +58,12 @@ class TASK:
     SCHEDULED = "scheduled",
     RUNNING = "running",
     DONE = "done"
+
+
+class REDIS:
+
+    """Default values for connection"""
+
+    HOST = "127.0.0.1"
+    PORT = 6379
+    DBNAME = 0
