@@ -9,6 +9,7 @@ class MISC:
     """Miscellaneous settings."""
 
     DEBUG = True     # show debugging messages or not
+    TRIES = 3        # defaul number of tries
 
 
 class DAEMON:

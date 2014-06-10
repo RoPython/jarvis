@@ -1,7 +1,7 @@
 """dbcom: database communication support"""
 
 import redis
-from jarvis.config import REDIS
+from jarvis.config import REDIS, MISC
 
 
 class RedisConnection(object):
@@ -25,26 +25,17 @@ class RedisConnection(object):
             return None
         return rcon
 
-    def refresh(self):
+    def refresh(self, tries=MISC.TRIES):
         """Re-establish the connection only if is dropped."""
-        while not self.__rcon or not self.__rcon.ping():
-            self.__rcon = self._connect()
-
-    def exists(self, key, field):
-        """Check if one element exists in a specific key"""
-
-        key_type = self.__rcon.type(key)
-        response = False
-        if key_type == "hash":
-            response = self.__rcon.hexists(key, field)
-        elif key_type == "set":
-            response = self.__rcon.sismember(key, field)
-        elif key_type == "none":
-            response = False
+        for _ in range(tries):
+            if not self.__rcon or not self.__rcon.ping():
+                self.__rcon = self._connect()
+            else:
+                break
         else:
-            raise ValueError("Exists is not supported for this key type: `{}`"
-                             .format(key_type))
-        return response
+            return False
+
+        return True
 
     @property
     def rcon(self):

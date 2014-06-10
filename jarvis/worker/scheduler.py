@@ -3,12 +3,10 @@
 Usage:
 >>> from jarvis.worker.scheduler import RedisConnector, Scheduler
 >>> class TaskScheduler(Scheduler):
->>>
->>> def __init__(self, *args, **kargs):
-...     super(TaskManager, self).__init__(*args, **kargs)
-...     connection = RedisConnector("task", "job")
-...     self.task_manager = TaskManager(connection)
->>>
+...     def __init__(self, *args, **kargs):
+...         super(TaskManager, self).__init__(*args, **kargs)
+...         connection = RedisConnector("task", "job")
+...         self.task_manager = TaskManager(connection)
 >>> if __name__ == "__main__":
 ...     scheduler = TaskScheduler()
 ...     scheduler.start()
@@ -24,6 +22,8 @@ from abc import abstractmethod, ABCMeta
 from jarvis.config import SCHEDULER, TASK, REDIS
 from jarvis.worker.dbcom import RedisConnection
 from jarvis.worker.daemon import ThreadDaemon
+
+# pylint: disable=R0913
 
 
 class DatabaseConnector(object, metaclass=ABCMeta):
@@ -79,15 +79,21 @@ class RedisConnector(DatabaseConnector):
 
     """Adapter for RedisConnection"""
 
-    def __init__(self, job_key, task_key, **kargs):
+    def __init__(self, job_key, task_key, host=REDIS.HOST,
+                 port=REDIS.PORT, dbname=REDIS.DBNAME):
         """Instantiates object with custom connection data"""
         super(RedisConnector, self).__init__()
-        self.host = kargs.get("host", REDIS.HOST)
-        self.port = kargs.get("port", REDIS.PORT)
-        self.dbname = kargs.get("dbname", REDIS.DBNAME)
+        self.host = host
+        self.port = port
+        self.dbname = dbname
         self.job_key = job_key
         self.task_key = task_key
         self.db_lock = threading.RLock()
+
+    @property
+    def rcon(self):
+        """Getter for redis connection"""
+        return self.connection.rcon
 
     def _connect(self):
         """Connect to Redis database"""
@@ -96,20 +102,17 @@ class RedisConnector(DatabaseConnector):
     def _delete_job(self, job):
         """Delete job from scheduler queue"""
         with self.db_lock:
-            rcon = self.connection.rcon
-            return rcon.zrem(job)
+            return self.rcon.zrem(job)
 
     def task(self, name):
         """Get information regarding received task name"""
         with self.db_lock:
-            rcon = self.connection.rcon
-            return rcon.hget(self.task_key, name)
+            return self.rcon.hget(self.task_key, name)
 
     def create_task(self, name, value):
         """Create a new task or overwrite an existed one"""
         with self.db_lock:
-            rcon = self.connection.rcon
-            return rcon.hset(self.task_key, name, value)
+            return self.rcon.hset(self.task_key, name, value)
 
     def update_task(self, name, fields):
         """Update representation of task"""
@@ -121,7 +124,7 @@ class RedisConnector(DatabaseConnector):
             data = json.loads(task)
             data.update(fields)
             task = json.dumps(data)
-        except ValueError as _:
+        except ValueError:
             return False
 
         return self.create_task(name, task)
@@ -129,18 +132,16 @@ class RedisConnector(DatabaseConnector):
     def schedule_task(self, name, date):
         """Schedule received task to date."""
         with self.db_lock:
-            rcon = self.connection.rcon
-            return rcon.zadd(self.job_key, name, date)
+            return self.rcon.zadd(self.job_key, name, date)
 
     def task_gen(self):
         """Return all unscheduled tasks."""
         tasks = []
         with self.db_lock:
-            rcon = self.connection.rcon
-            tasks = rcon.hgetall(self.task_key)
+            tasks = self.rcon.hgetall(self.task_key)
 
         # pylint: disable=E1103
-        for key in tasks.keys():
+        for key in list(tasks.keys()):
             yield (key, tasks.pop(key))
 
     def job_gen(self, time_window):
@@ -149,8 +150,7 @@ class RedisConnector(DatabaseConnector):
         end = start + time_window
         jobs = []
         with self.db_lock:
-            rcon = self.connection.rcon
-            jobs = rcon.zrangebyscore(self.job_key, start, end)
+            jobs = self.rcon.zrangebyscore(self.job_key, start, end)
 
         for job in jobs:
             task = self.task(job)
@@ -186,7 +186,7 @@ class Task(object):
         value = "<Task: Unknown format.>"
         try:
             value = json.dumps(self.__data)
-        except ValueError as _:
+        except ValueError:
             pass
         return value
 
