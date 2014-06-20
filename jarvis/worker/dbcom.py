@@ -21,19 +21,22 @@ class RedisConnection(object):
             # return the connection only if is valid and reachable
             if not rcon.ping():
                 return None
-        except (redis.ConnectionError, redis.RedisError) as _:
+        except (redis.ConnectionError, redis.RedisError):
             return None
         return rcon
 
     def refresh(self, tries=MISC.TRIES):
         """Re-establish the connection only if is dropped."""
         for _ in range(tries):
-            if not self.__rcon or not self.__rcon.ping():
-                self.__rcon = self._connect()
-            else:
-                break
+            try:
+                if not self.__rcon or not self.__rcon.ping():
+                    self.__rcon = self._connect()
+                else:
+                    break
+            except redis.ConnectionError:
+                pass
         else:
-            return False
+            raise redis.ConnectionError("Connection refused.")
 
         return True
 

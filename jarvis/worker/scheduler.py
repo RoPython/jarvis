@@ -71,7 +71,7 @@ class DatabaseConnector(object, metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def job_gen(self, time_window):
+    def job_gen(self, time_frame):
         """Return all scheduled jobs for next few seconds"""
 
 
@@ -144,10 +144,10 @@ class RedisConnector(DatabaseConnector):
         for key in list(tasks.keys()):
             yield (key, tasks.pop(key))
 
-    def job_gen(self, time_window):
+    def job_gen(self, time_frame):
         """Return all scheduled jobs for next few seconds"""
         start = time.time()
-        end = start + time_window
+        end = start + time_frame
         jobs = []
         with self.db_lock:
             jobs = self.rcon.zrangebyscore(self.job_key, start, end)
@@ -210,7 +210,7 @@ class Task(object):
         if container and name in container:
             return container[name]
 
-        raise AttributeError("'task' object has no attribute '{}'"
+        raise AttributeError("Arguments 'task' object has no attribute '{}'"
                              .format(name))
 
     def task_changed(self, fields):
@@ -236,7 +236,7 @@ class Task(object):
     def update(self, config):
         """Update fields from local storage."""
         if not isinstance(config, dict):
-            raise ValueError("config should be dictionary.")
+            raise ValueError("Argument `config` should be dictionary")
         self.__data.update(config)
 
     def connect(self, scheduler):
@@ -253,6 +253,13 @@ class Task(object):
     def dump(self):
         """Text representation of task"""
         return json.dumps(self.__data)
+
+    def save(self):
+        """Add task to database"""
+        if self.connection.task(self.name):
+            raise ValueError("Task already exists")
+
+        self.connection.create_task(self.name, self.__data)
 
 
 class TaskManager(object):
@@ -273,9 +280,9 @@ class TaskManager(object):
             task = self.task(name, content, self.connection)
             yield task
 
-    def jobs(self, time_window):
+    def jobs(self, time_frame):
         """Generator for all scheduled tasks from waiting queue."""
-        for name, content in self.connection.job_get(time_window):
+        for name, content in self.connection.job_get(time_frame):
             task = self.task(name, content, self.connection)
             yield task
 
@@ -284,10 +291,11 @@ class Scheduler(ThreadDaemon):
 
     """Abstract base class for simple scheduler."""
 
-    def __init__(self, *args, **kargs):
+    def __init__(self, *args, time_frame=3, **kargs):
         """Instantiates object with custom attributes specific to the
         task scheduler daemon."""
         super(Scheduler, self).__init__(*args, **kargs)
+        self.time_frame = time_frame
         self.running_jobs = queue.Queue()
         self.scheduler_manager = []
         self.task_manager = None
@@ -300,7 +308,7 @@ class Scheduler(ThreadDaemon):
 
     def job_gen(self):
         """Generator for all scheduled tasks from waiting queue."""
-        for job in self.task_manager.jobs():
+        for job in self.task_manager.jobs(self.time_frame):
             if job.status == TASK.SCHEDULED:
                 yield job
 
@@ -372,3 +380,16 @@ class Scheduler(ThreadDaemon):
         job.start()                                   # Notify star of job
         # Run specific action for this job
         job.action(**job.action_args)
+
+    def trigger_daily(self, wait, start, interval):
+        """Trigger for daily tasks"""
+        if start < time.time():
+            cycle = int((time.time() - start) / interval) + 1
+            start = cycle * interval + start
+
+        if not wait:
+            return start
+
+        fine_delay = self.time_frame / 10
+        time.sleep(start - time.time() - fine_delay)
+        return fine_delay
