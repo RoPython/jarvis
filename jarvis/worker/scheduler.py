@@ -82,10 +82,8 @@ class RedisConnector(DatabaseConnector):
     def __init__(self, job_key, task_key, host=REDIS.HOST,
                  port=REDIS.PORT, dbname=REDIS.DBNAME):
         """Instantiates object with custom connection data"""
+        self.host, self.port, self.dbname = host, port, dbname
         super(RedisConnector, self).__init__()
-        self.host = host
-        self.port = port
-        self.dbname = dbname
         self.job_key = job_key
         self.task_key = task_key
         self.db_lock = threading.RLock()
