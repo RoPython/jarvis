@@ -114,6 +114,11 @@ class RedisConnector(DatabaseConnector):
         with self.db_lock:
             return self.rcon.hset(self.task_key, name, value)
 
+    def delete_task(self, name):
+        """Delete task from database"""
+        with self.db_lock:
+            return self.rcon.hdel(self.task_key, name)
+
     def update_task(self, name, fields):
         """Update representation of task"""
         task = self.task(name)
