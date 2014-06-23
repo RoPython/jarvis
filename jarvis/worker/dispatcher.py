@@ -1,4 +1,9 @@
-"""dispatcher: base and custom dispatchers based on daemons"""
+"""
+jarvis.worker.dispatcher
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+Base and custom dispatchers based on daemons.
+"""
 
 
 import sys

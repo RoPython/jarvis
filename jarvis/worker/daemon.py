@@ -1,4 +1,9 @@
-"""daemon: server-like task scheduler and processor"""
+"""
+jarvis.worker.daemon
+~~~~~~~~~~~~~~~~~~~~
+
+Server-like task scheduler and processor.
+"""
 
 
 import time

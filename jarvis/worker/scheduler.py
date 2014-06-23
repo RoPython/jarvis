@@ -1,15 +1,22 @@
-"""scheduler: base and custom schedulers based on daemons
+"""
 
-Usage:
->>> from jarvis.worker.scheduler import RedisConnector, Scheduler
->>> class TaskScheduler(Scheduler):
-...     def __init__(self, *args, **kargs):
-...         super(TaskManager, self).__init__(*args, **kargs)
-...         connection = RedisConnector("task", "job")
-...         self.task_manager = TaskManager(connection)
->>> if __name__ == "__main__":
-...     scheduler = TaskScheduler()
-...     scheduler.start()
+jarvis.worker.scheduler
+~~~~~~~~~~~~~~~~~~~~~~~
+
+Base and custom schedulers based on daemons.
+
+::
+
+   from jarvis.worker.scheduler import RedisConnector, Scheduler
+   class TaskScheduler(Scheduler):
+       def __init__(self, *args, **kargs):
+           super(TaskManager, self).__init__(*args, **kargs)
+           connection = RedisConnector("task", "job")
+           self.task_manager = TaskManager(connection)
+
+   if __name__ == "__main__":
+       scheduler = TaskScheduler()
+       scheduler.start()
 """
 
 import time
