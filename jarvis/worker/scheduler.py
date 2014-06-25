@@ -1,15 +1,22 @@
-"""scheduler: base and custom schedulers based on daemons
+"""
 
-Usage:
->>> from jarvis.worker.scheduler import RedisConnector, Scheduler
->>> class TaskScheduler(Scheduler):
-...     def __init__(self, *args, **kargs):
-...         super(TaskManager, self).__init__(*args, **kargs)
-...         connection = RedisConnector("task", "job")
-...         self.task_manager = TaskManager(connection)
->>> if __name__ == "__main__":
-...     scheduler = TaskScheduler()
-...     scheduler.start()
+jarvis.worker.scheduler
+~~~~~~~~~~~~~~~~~~~~~~~
+
+Base and custom schedulers based on daemons.
+
+::
+
+   from jarvis.worker.scheduler import RedisConnector, Scheduler
+   class TaskScheduler(Scheduler):
+       def __init__(self, *args, **kargs):
+           super(TaskManager, self).__init__(*args, **kargs)
+           connection = RedisConnector("task", "job")
+           self.task_manager = TaskManager(connection)
+
+   if __name__ == "__main__":
+       scheduler = TaskScheduler()
+       scheduler.start()
 """
 
 import time
@@ -82,10 +89,8 @@ class RedisConnector(DatabaseConnector):
     def __init__(self, job_key, task_key, host=REDIS.HOST,
                  port=REDIS.PORT, dbname=REDIS.DBNAME):
         """Instantiates object with custom connection data"""
+        self.host, self.port, self.dbname = host, port, dbname
         super(RedisConnector, self).__init__()
-        self.host = host
-        self.port = port
-        self.dbname = dbname
         self.job_key = job_key
         self.task_key = task_key
         self.db_lock = threading.RLock()
@@ -113,6 +118,11 @@ class RedisConnector(DatabaseConnector):
         """Create a new task or overwrite an existed one"""
         with self.db_lock:
             return self.rcon.hset(self.task_key, name, value)
+
+    def delete_task(self, name):
+        """Delete task from database"""
+        with self.db_lock:
+            return self.rcon.hdel(self.task_key, name)
 
     def update_task(self, name, fields):
         """Update representation of task"""

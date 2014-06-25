@@ -1,10 +1,14 @@
-"""dispatcher: base and custom dispatchers based on daemons"""
+"""
+jarvis.worker.dispatcher
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+Base and custom dispatchers based on daemons.
+"""
 
 
 import sys
 import logging
 from collections import namedtuple
-from multiprocessing.connection import Listener
 
 from jarvis.config import DISPATCHER
 from jarvis.worker.daemon import ThreadDaemon
@@ -19,9 +23,6 @@ class Dispatcher(ThreadDaemon):
         """Init with custom values and take care of `listener` (server)."""
         super(Dispatcher, self).__init__(*args, delay=delay, loop=loop,
                                          **kwargs)
-
-        if not listener:
-            listener = Listener(DISPATCHER.ADDRESS)
 
         self.listener = listener
         self.logger = logging.getLogger(self.name)

@@ -1,4 +1,9 @@
-"""dbcom: database communication support"""
+"""
+jarvis.worker.dbcom
+~~~~~~~~~~~~~~~~~~~
+
+Database communication support.
+"""
 
 import redis
 from jarvis.config import REDIS, MISC
