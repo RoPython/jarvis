@@ -11,10 +11,10 @@ import logging
 from collections import namedtuple
 
 from jarvis.config import DISPATCHER
-from jarvis.worker.daemon import ThreadDaemon
+from jarvis.worker.daemon import Daemon
 
 
-class Dispatcher(ThreadDaemon):
+class Dispatcher(Daemon):
 
     """Base class for dispatching."""
 
